@@ -104,4 +104,53 @@ public class CheckoutService {
 
         return bill;
     }
+
+    public List<BillResponse> getCheckoutHistory(Long targetBranchId) {
+        String currentRole = TenantContext.getCurrentUserRole();
+        Long currentBranch = TenantContext.getCurrentBranch();
+
+        List<DiningSession> closedSessions;
+        if (!"ADMIN".equals(currentRole)) {
+            Long userBranch = (currentBranch != null && currentBranch > 0) ? currentBranch : 1L;
+            closedSessions = sessionRepository.findByBranchIdAndStatusOrderByEndTimeDesc(userBranch, SessionStatus.CLOSED);
+        } else if (targetBranchId != null && targetBranchId > 0) {
+            closedSessions = sessionRepository.findByBranchIdAndStatusOrderByEndTimeDesc(targetBranchId, SessionStatus.CLOSED);
+        } else {
+            closedSessions = sessionRepository.findByStatusOrderByEndTimeDesc(SessionStatus.CLOSED);
+        }
+
+        List<BillResponse> history = new java.util.ArrayList<>();
+        for (DiningSession session : closedSessions) {
+            List<OrderItem> orderedItems = orderItemRepository.findBySessionId(session.getId());
+            double totalAmount = 0.0;
+            for (OrderItem item : orderedItems) {
+                totalAmount += (item.getPrice() * item.getQuantity());
+            }
+
+            RestaurantTable table = tableRepository.findById(session.getTableId()).orElse(null);
+            String tableNumber = table != null ? table.getTableNumber() : "Bàn #" + session.getTableId();
+
+            String customerName = "Khách vãng lai";
+            String customerPhone = null;
+            if (session.getCustomerId() != null) {
+                Customer customer = customerRepository.findById(session.getCustomerId()).orElse(null);
+                if (customer != null) {
+                    customerName = customer.getName();
+                    customerPhone = customer.getPhone();
+                }
+            }
+
+            BillResponse bill = new BillResponse();
+            bill.setSessionId(session.getId());
+            bill.setTableNumber(tableNumber);
+            bill.setTotalAmount(totalAmount);
+            bill.setStartTime(session.getStartTime());
+            bill.setEndTime(session.getEndTime());
+            bill.setCustomerName(customerName);
+            bill.setCustomerPhone(customerPhone);
+            bill.setGuestCount(session.getGuestCount() != null ? session.getGuestCount() : 1);
+            history.add(bill);
+        }
+        return history;
+    }
 }

@@ -38,4 +38,6 @@ public class OrderItem {
     @Column(name = "session_id")
     private Long sessionId;
 
+    @Column(name = "created_at")
+    private java.time.LocalDateTime createdAt = java.time.LocalDateTime.now();
 }

@@ -14,6 +14,14 @@ public class CheckoutController {
         this.checkoutService = checkoutService;
     }
 
+    @GetMapping("/history")
+    public ResponseEntity<java.util.List<BillResponse>> getHistory(
+            @RequestParam(required = false) Long branchId,
+            @RequestHeader(value = "X-Branch-Id", required = false) Long headerBranchId) {
+        Long targetBranch = branchId != null ? branchId : headerBranchId;
+        return ResponseEntity.ok(checkoutService.getCheckoutHistory(targetBranch));
+    }
+
     // API: POST http://localhost:8080/api/checkout/{sessionId}?branchId=1
     @PostMapping("/{sessionId}")
     public ResponseEntity<?> checkout(@PathVariable Long sessionId, @RequestParam Long branchId) {

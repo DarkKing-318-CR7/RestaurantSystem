@@ -26,8 +26,18 @@ public class OrderController {
         try{
             OrderItem saveItem =orderService.addDishOrder(request);
             return ResponseEntity.ok(saveItem);
-        }catch(Exception e){
+        } catch(Exception e){
             return ResponseEntity.badRequest().body("lỗi thêm món: "+e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{itemId}")
+    public ResponseEntity<?> deleteDish(@PathVariable Long itemId) {
+        try {
+            orderService.deleteOrderItem(itemId);
+            return ResponseEntity.ok("Đã xóa món thành công");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi xóa món: " + e.getMessage());
         }
     }
 }
