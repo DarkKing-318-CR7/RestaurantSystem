@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/restaurant_db
+    username: postgres
+    password: 1
+  jpa:
+    hibernate:
+      ddl-auto: update #tự động tạo bảng dựa trên code java
+    show-sql : true #Ịn ra câu lệnh sql ra console dể dễ debug
+    properties:
+      hibernate:
+        format_sql :true

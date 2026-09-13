@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Container 1: Cơ sở dữ liệu PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: restaurant_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1 # Thay bằng mật khẩu thực tế của bạn
+      POSTGRES_DB: restaurant_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Giữ lại dữ liệu ngay cả khi xóa container
+    restart: always
+
+  # Container 2: Backend Spring Boot
+  app:
+    build: .
+    container_name: restaurant_backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db # Chờ Database chạy lên trước rồi mới chạy App
+    environment:
+      # Ghi đè cấu hình trong application.yml: Trỏ "localhost" thành tên service "db"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/restaurant_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: secretpassword
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    restart: always
+
+volumes:
+  postgres_data:
