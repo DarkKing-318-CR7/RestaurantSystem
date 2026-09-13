@@ -4,10 +4,9 @@ import com.example.Restaurant.dto.OrderItemRequest;
 import com.example.Restaurant.model.OrderItem;
 import com.example.Restaurant.service.OrderService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RequestMapping("/api/orders")
 @RestController
@@ -15,6 +14,11 @@ public class OrderController {
     private final OrderService orderService;
     public OrderController(OrderService orderService) {
         this.orderService = orderService;
+    }
+
+    @GetMapping("/session/{sessionId}")
+    public ResponseEntity<List<OrderItem>> getOrdersBySession(@PathVariable Long sessionId) {
+        return ResponseEntity.ok(orderService.getItemsBySession(sessionId));
     }
 
     @PostMapping("/add")

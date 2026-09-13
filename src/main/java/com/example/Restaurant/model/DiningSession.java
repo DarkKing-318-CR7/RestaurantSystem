@@ -29,4 +29,12 @@ public class DiningSession {
     @Column(name = "end_time")
     private LocalDateTime endTime;
 
+    @Column(name = "customer_id")
+    private Long customerId;
+
+    @Column(name = "guest_count")
+    private Integer guestCount = 1;
+
+    @Column(name = "note")
+    private String note;
 }

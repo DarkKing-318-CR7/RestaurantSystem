@@ -4,6 +4,7 @@ spring:
     username: postgres
     password: 1
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update #tự động tạo bảng dựa trên code java
     show-sql : true #Ịn ra câu lệnh sql ra console dể dễ debug

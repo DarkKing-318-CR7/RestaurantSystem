@@ -1,11 +1,13 @@
 package com.example.Restaurant.controller;
 
+import com.example.Restaurant.dto.BookTableRequest;
 import com.example.Restaurant.model.DiningSession;
 import com.example.Restaurant.model.RestaurantTable;
-import com.example.Restaurant.model.SessionStatus;
 import com.example.Restaurant.service.TableService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/tables")
@@ -16,13 +18,30 @@ public class TableController {
         this.tableService = tableService;
     }
 
+    @GetMapping
+    public ResponseEntity<List<RestaurantTable>> getAllTables(
+            @RequestParam(required = false) Long branchId,
+            @RequestHeader(value = "X-Branch-Id", required = false) Long headerBranchId) {
+        Long targetBranch = branchId != null ? branchId : headerBranchId;
+        return ResponseEntity.ok(tableService.getAllTables(targetBranch));
+    }
+
+    @GetMapping("/{tableId}/active-session")
+    public ResponseEntity<?> getActiveSession(@PathVariable("tableId") Long tableId) {
+        return tableService.getActiveSession(tableId)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @PostMapping("/{tableId}/book")
-    public ResponseEntity<?> bookTable(@PathVariable("tableId") Long tableId) {
+    public ResponseEntity<?> bookTable(
+            @PathVariable("tableId") Long tableId,
+            @RequestBody(required = false) BookTableRequest request) {
         try {
-            DiningSession session = tableService.bookTable(tableId);
+            DiningSession session = tableService.bookTable(tableId, request);
             return ResponseEntity.ok(session);
-        }catch(Exception e){
-            return ResponseEntity.badRequest().body("Lỗi: "+e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi: " + e.getMessage());
         }
     }
 }

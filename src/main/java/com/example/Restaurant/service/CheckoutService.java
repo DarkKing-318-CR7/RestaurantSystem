@@ -1,12 +1,13 @@
 package com.example.Restaurant.service;
 
+import com.example.Restaurant.config.TenantContext;
 import com.example.Restaurant.dto.BillResponse;
 import com.example.Restaurant.model.*;
+import com.example.Restaurant.repository.CustomerRepository;
 import com.example.Restaurant.repository.DiningSessionRepository;
 import com.example.Restaurant.repository.OrderItemRepository;
 import com.example.Restaurant.repository.RestaurantTableRepository;
 import jakarta.transaction.Transactional;
-import org.hibernate.query.Order;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -18,13 +19,16 @@ public class CheckoutService {
     private final DiningSessionRepository sessionRepository;
     private final OrderItemRepository orderItemRepository;
     private final RestaurantTableRepository tableRepository;
+    private final CustomerRepository customerRepository;
 
     public CheckoutService(DiningSessionRepository sessionRepository,
                            OrderItemRepository orderItemRepository,
-                           RestaurantTableRepository tableRepository) {
+                           RestaurantTableRepository tableRepository,
+                           CustomerRepository customerRepository) {
         this.sessionRepository = sessionRepository;
         this.orderItemRepository = orderItemRepository;
         this.tableRepository = tableRepository;
+        this.customerRepository = customerRepository;
     }
 
     @Transactional
@@ -32,6 +36,13 @@ public class CheckoutService {
         // 1. Kiểm tra Phiên phục vụ
         DiningSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phiên phục vụ!"));
+
+        // Bảo mật Multi-tenant: Nhân viên chỉ được thanh toán cho phiên phục vụ của chi nhánh mình
+        Long currentBranch = TenantContext.getCurrentBranch();
+        String currentRole = TenantContext.getCurrentUserRole();
+        if (!"ADMIN".equals(currentRole) && currentBranch != null && !session.getBranchId().equals(currentBranch)) {
+            throw new RuntimeException("Bạn không có quyền thanh toán cho phiên phục vụ thuộc chi nhánh khác!");
+        }
 
         if (session.getStatus() == SessionStatus.CLOSED) {
             throw new RuntimeException("Phiên phục vụ này đã được thanh toán!");
@@ -57,7 +68,40 @@ public class CheckoutService {
         // Cơ chế Optimistic Locking vẫn tự động chạy ở bước save này để bảo vệ dữ liệu bàn
         tableRepository.save(table);
 
-        // 5. Trả về Hóa đơn
-        return new BillResponse(session.getId(), table.getTableNumber(), totalAmount, session.getStartTime(), session.getEndTime());
+        // 5. Xử lý tích điểm thành viên (nếu có thông tin khách hàng)
+        String customerName = "Khách vãng lai";
+        String customerPhone = null;
+        int pointsEarned = 0;
+        int totalPoints = 0;
+
+        if (session.getCustomerId() != null) {
+            Customer customer = customerRepository.findById(session.getCustomerId()).orElse(null);
+            if (customer != null) {
+                customerName = customer.getName();
+                customerPhone = customer.getPhone();
+
+                // Quy tắc: 10,000 VNĐ = 1 điểm thưởng
+                pointsEarned = (int) (totalAmount / 10000.0);
+                int currentPoints = customer.getLoyaltyPoints() != null ? customer.getLoyaltyPoints() : 0;
+                totalPoints = currentPoints + pointsEarned;
+                customer.setLoyaltyPoints(totalPoints);
+                customerRepository.save(customer);
+            }
+        }
+
+        // 6. Trả về Hóa đơn hoàn chỉnh
+        BillResponse bill = new BillResponse();
+        bill.setSessionId(session.getId());
+        bill.setTableNumber(table.getTableNumber());
+        bill.setTotalAmount(totalAmount);
+        bill.setStartTime(session.getStartTime());
+        bill.setEndTime(session.getEndTime());
+        bill.setCustomerName(customerName);
+        bill.setCustomerPhone(customerPhone);
+        bill.setLoyaltyPointsEarned(pointsEarned);
+        bill.setTotalLoyaltyPoints(totalPoints);
+        bill.setGuestCount(session.getGuestCount() != null ? session.getGuestCount() : 1);
+
+        return bill;
     }
 }

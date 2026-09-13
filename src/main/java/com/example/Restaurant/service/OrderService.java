@@ -1,10 +1,13 @@
 package com.example.Restaurant.service;
 
+import com.example.Restaurant.config.TenantContext;
 import com.example.Restaurant.dto.OrderItemRequest;
 import com.example.Restaurant.model.OrderItem;
 import com.example.Restaurant.repository.OrderItemRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class OrderService {
@@ -19,7 +22,12 @@ public class OrderService {
         newItem.setProductName(request.getProductName());
         newItem.setQuantity(request.getQuantity());
         newItem.setPrice(request.getPrice());
-        newItem.setBranchId(request.getBranchId());
+
+        Long branchId = request.getBranchId() != null ? request.getBranchId() : TenantContext.getCurrentBranch();
+        if (branchId == null) {
+            branchId = 1L;
+        }
+        newItem.setBranchId(branchId);
 
         //đẩy thẳng map của java cho jsonb
         newItem.setCustomization(request.getCustomization());
@@ -27,5 +35,9 @@ public class OrderService {
         newItem.setSessionId(request.getSessionId());
 
         return orderItemRepository.save(newItem);
+    }
+
+    public List<OrderItem> getItemsBySession(Long sessionId) {
+        return orderItemRepository.findBySessionId(sessionId);
     }
 }
